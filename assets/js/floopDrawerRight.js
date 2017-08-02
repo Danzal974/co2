@@ -111,8 +111,8 @@ function buildListContactHtml(contacts, myId){
 function getFloopItem(id, type, value){
 	var oldElement = isOldElement(value);
 
-	var cp = (typeof value.address != "undefined" && typeof value.address.postalCode != "undefined") ? value.address.postalCode : typeof value.cp != "undefined" ? value.cp : "";
-	var city = (typeof value.address != "undefined" && typeof value.address.addressLocality != "undefined") ? value.address.addressLocality : "";
+	var cp = (typeof value.address != "undefined" && notNull(value.address) && typeof value.address.postalCode != "undefined") ? value.address.postalCode : typeof value.cp != "undefined" ? value.cp : "";
+	var city = (typeof value.address != "undefined" && notNull(value.address) && typeof value.address.addressLocality != "undefined") ? value.address.addressLocality : "";
 	defaultImg=type.name;
 	if(defaultImg=="people")
 		defaultImg="citoyens";
@@ -252,7 +252,6 @@ function addFloopEntity(entityId, entityType, entityValue){
 
 	//We check if the element is already displayed
 	if($('#floopItem-'+type.name+'-'+entityId).length < 1){
-		mylog.log("here5");
 		var html = getFloopItem(entityId, type, entityValue);
 		$("ul#floopType-"+entityType).prepend(html);
 	}

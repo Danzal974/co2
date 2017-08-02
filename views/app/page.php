@@ -1,11 +1,13 @@
 <?php 
-	//HtmlHelper::registerCssAndScriptsFiles( array('', ) , Yii::app()->theme->baseUrl. '/assets');
+	HtmlHelper::registerCssAndScriptsFiles( array('/css/default/directory.css') , Yii::app()->theme->baseUrl. '/assets');
 	//$cssAnsScriptFilesModule = array('');
 	//HtmlHelper::registerCssAndScriptsFiles($cssAnsScriptFilesModule, $this->module->assetsUrl);
-
+    
     $layoutPath = 'webroot.themes.'.Yii::app()->theme->name.'.views.layouts.';
     //header + menu
-    $this->renderPartial($layoutPath.'header', 
+
+    if($this->module->id != "network")
+        $this->renderPartial($layoutPath.'header', 
                         array(  "layoutPath"=>$layoutPath , 
                                 "page" => "page") ); 
 ?>
@@ -16,7 +18,7 @@
 		<?php 
         
             if($type == Person::COLLECTION  || $type == Event::COLLECTION || 
-               $type == Project::COLLECTION || $type == Organization::COLLECTION || $type == Poi::COLLECTION){
+               $type == Project::COLLECTION || $type == Organization::COLLECTION){
     			$params = array("element"=>$element , 
     							"page" => "page",
     							"edit"=>$edit,
@@ -71,6 +73,16 @@
 
                 $this->renderPartial('../survey/entryStandalone', $params ); 
             }
+
+            if($type == Poi::COLLECTION){
+                $params = array("element"=>$element , 
+                                "page" => "page",
+                                "type" => $type,
+                                "controller" => $controller,
+                                );
+
+                $this->renderPartial('../poi/standalone', $params ); 
+            }
 		?>
 	</div>
 </div>
@@ -118,6 +130,7 @@ function initPageInterface(){
     });
 
     $("#menu-map-btn-start-search").click(function(){
+        $("#second-search-bar").val($("#input-search-map").val());
         startGlobalSearch(0, indexStepGS);
     });
 

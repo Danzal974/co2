@@ -51,7 +51,12 @@ function checkPoll(){
 		countPoll++;
 	}
 }
-
+function setLanguage(lang){
+	$.cookie('lang', lang, { expires: 365, path: "/" });
+	toastr.success("Changement de la langue en cours");
+	//window.reloadurlCtrl.loadByHash(location.hash);
+	location.reload();
+}
 function bindRightClicks() { 
 	$.contextMenu({
 	    selector: ".add2fav",
@@ -306,7 +311,7 @@ function connectPerson(connectUserId, callback)
 
 
 function disconnectTo(parentType,parentId,childId,childType,connectType, callback) {
-	var messageBox = trad["removeconnection"+parentType];
+	var messageBox = trad["removeconnection"+connectType];
 	$(".disconnectBtnIcon").removeClass("fa-unlink").addClass("fa-spinner fa-spin");
 	var formData = {
 		"childId" : childId,
@@ -343,7 +348,7 @@ function disconnectTo(parentType,parentId,childId,childType,connectType, callbac
 								if (typeof callback == "function") 
 									callback();
 								else
-									urlCtrl.loadByHash("#page.type.citoyens.id."+userId);
+									urlCtrl.loadByHash(location.hash);
 							} else {
 							   toastr.error("You leave succesfully");
 							}
@@ -392,6 +397,7 @@ function validateConnection(parentType, parentId, childId, childType, linkOption
 		},
 	});  
 }
+
 function follow(parentType, parentId, childId, childType, callback){
 	mylog.log("follow",parentType, parentId, childId, childType, callback);
 	$(".followBtn").removeClass("fa-link").addClass("fa-spinner fa-spin");
@@ -421,6 +427,7 @@ function follow(parentType, parentId, childId, childType, callback){
 		},
 	});
 }
+
 function connectTo(parentType, parentId, childId, childType, connectType, parentName, actionAdmin) {
 	if(parentType=="events" && connectType=="attendee")
 		$(".connectBtn").removeClass("fa-link").addClass("fa-spinner fa-spin");
@@ -569,8 +576,8 @@ var urlCtrl = {
 	    "#project.addchartsv" : {title:'EDIT CHART ', icon : 'puzzle-piece' },
 	    "#chart.addchartsv" : {title:'EDIT CHART ', icon : 'puzzle-piece' },
 	    "#gantt.addtimesheetsv" : {title:'EDIT TIMELINE ', icon : 'tasks' },
-	    "#news.detail" : {title:'NEWS DETAIL ', icon : 'rss' },
-	    "#news.index.type" : {title:'NEWS INDEX ', icon : 'rss', menuId:"menu-btn-news-network","urlExtraParam":"isFirst=1" },
+	    //"#news.detail" : {title:'NEWS DETAIL ', icon : 'rss' },
+	    //"#news.index.type" : {title:'NEWS INDEX ', icon : 'rss', menuId:"menu-btn-news-network","urlExtraParam":"isFirst=1" },
 	    "#need.detail" : {title:'NEED DETAIL ', icon : 'cubes' },
 	    "#need.addneedsv" : {title:'NEED DETAIL ', icon : 'cubes' },
 	    "#city.creategraph" : {title:'CITY ', icon : 'university', menuId:"btn-geoloc-auto-menu" },
@@ -888,9 +895,13 @@ also switches the global Title and Icon
 **************/
 
 function  processingBlockUi() { 
-	msg = '<h4 style="font-weight:300" class=" text-dark padding-10"><i class="fa fa-spin fa-circle-o-notch"></i><br>Chargement en cours...</h4>';
+	msg = '<h4 style="font-weight:300" class=" text-dark padding-10">'+
+			'<i class="fa fa-spin fa-circle-o-notch"></i><br>Chargement en cours...'+
+		  '</h4>';
+
 	if( jsonHelper.notNull( "themeObj.blockUi.processingMsg" ) )
 		msg = themeObj.blockUi.processingMsg;
+
 	$.blockUI({ message :  msg });
 	bindLBHLinks();
 }
@@ -906,7 +917,6 @@ function showAjaxPanel (url,title,icon, mapEnd , urlObj) {
 			
 	setTimeout(function(){
 		$(dest).html("");
-		mylog.log("here", $(dest).length );	
 		$(".hover-info,.hover-info2").hide();
 		processingBlockUi();
 		showMap(false);
@@ -941,12 +951,10 @@ function showAjaxPanel (url,title,icon, mapEnd , urlObj) {
 				showMap(true);
 
     		if(typeof contextData != "undefined" && contextData != null && contextData.type && contextData.id ){
-        		uploadObj.type = contextData.type;
-        		uploadObj.id = contextData.id;
+        		uploadObj.set(contextData.type,contextData.id);
         	}
         	
         	if( typeof urlCtrl.afterLoad == "function") {
-        		mylog.log("9999999999999999999999999999", searchType, $('#searchTags').val() );
         		urlCtrl.afterLoad();
         		urlCtrl.afterLoad = null;
         	}
@@ -1435,8 +1443,10 @@ function  bindLBHLinks() {
 		//alert("bindLBHLinks Preview"+$(this).data("modalshow"));
 		mylog.warn("***************************************");
 		var h = ($(this).data("hash")) ? $(this).data("hash") : $(this).attr("href");
-		if( $(this).data("modalshow") )
+		if( $(this).data("modalshow") ){
 			smallMenu.open ( directory.preview( mapElements[ $(this).data("modalshow") ],h ) );
+			initBtnLink();
+		}
 		else {
 			url = (h.indexOf("#") == 0 ) ? urlCtrl.convertToPath(h) : h;
 	    	smallMenu.openAjaxHTML( baseUrl+'/'+moduleId+"/"+url);
@@ -1593,13 +1603,14 @@ function activateSummernote(elem) {
 
 function  firstOptions() { 
 	var res = {
-		"dontKnow":"Je ne sais pas",
+		"dontKnow":tradDynForm["dontknow"],
 	};
-	res[userId] = "Moi";
+	res[userId] = tradDynForm["me"];
 	return res;
  }
 
-function myAdminList (ctypes) { 
+function myAdminList (ctypes) {
+	mylog.log("myAdminList", ctypes);
 	var myList = {};
 	if(userId){
 		//types in MyContacts
@@ -1612,12 +1623,13 @@ function myAdminList (ctypes) {
 			var connectionType = connectionTypes[ctype];
 			myList[ ctype ] = { label: ctype, options:{} };
 			if( notNull(myContacts) ){
-				mylog.log("myAdminList",ctype,connectionType,myContacts[ ctype ]);
+				mylog.log("myAdminList",ctype, connectionType, myContacts, myContacts[ ctype ]);
 				$.each( myContacts[ ctype ],function(id,elemObj){
 					mylog.log("myAdminList",ctype,id,elemObj.name);
 					if( elemObj.links && elemObj.links[connectionType] && elemObj.links[connectionType][userId] && elemObj.links[connectionType][userId].isAdmin) {
-						mylog.warn("myAdminList2",ctype+"-"+id+"-"+elemObj.name);
+						mylog.warn("myAdminList2",ctype+"-"+id+"-"+elemObj.name, elemObj["_id"]["$id"]);
 						myList[ ctype ]["options"][ elemObj["_id"]["$id"] ] = elemObj.name;
+						mylog.log(myList);
 					}
 				});
 			}
@@ -1626,6 +1638,25 @@ function myAdminList (ctypes) {
 	}
 	return myList;
 }
+
+function parentList (ctypes, parentId, parentType) { 
+	mylog.log("parentList", ctypes, parentId, parentType);
+	var myList = myAdminList( ctypes ) ;
+
+	mylog.log("parentList myList", myList);
+	if(	notEmpty(parentId) && notEmpty(parentType) && 
+		notEmpty(myList) && 
+		(	!notEmpty(myList[parentType]) ||
+			( notEmpty(myList[parentType]) && !notEmpty(myList[parentType]["options"][parentId]) ) ) ) {
+
+		if(!notEmpty(myList[parentType]))
+			myList[ parentType ] = { label: parentType, options:{} };
+    	myList[ parentType ]["options"][ parentId ] = contextData.parent.name;  
+    }
+    return myList; 
+}
+
+
 function escapeHtml(string) {
 	var entityMap = {
 	    '"': '&quot;',
@@ -1989,7 +2020,9 @@ function inMyContacts (type,id) {
 	var res = false ;
 	if(typeof myContacts != "undefined" && myContacts != null && myContacts[type]){
 		$.each( myContacts[type], function( key,val ){
-			if( id == val["_id"]["$id"] ){
+			mylog.log("val", val);
+			if( ( typeof val["_id"] != "undefined" && id == val["_id"]["$id"] ) || 
+				(typeof val["id"] != "undefined" && id == val["id"] ) ) {
 				res = true;
 				return ;
 			}
@@ -2061,7 +2094,7 @@ function newInvitation(){
 		$("#ajaxFormModal #inviteName").val($("#ajaxFormModal #inviteSearch").val());
 		$("#ajaxFormModal #inviteEmail").val("");
 	}
-	$("#inviteText").val('<?php echo Yii::t("person","Hello, \\nCome and meet me on that website!\\nAn email, your town and you are connected to your city!\\nYou can see everything that happens in your city and act for the commons."); ?>');
+	$("#inviteText").val('');
 }
 
 function communecterUser(){
@@ -2079,7 +2112,7 @@ function communecterUser(){
 function updateLocalityEntities(addressesIndex, addressesLocality){
 	mylog.warn("updateLocalityEntities");
 	$("#ajax-modal").modal("hide");
-	showMap(true);
+	
 	if(typeof formInMap.initUpdateLocality != "undefined"){
 		var address = contextData.address ;
 		var geo = contextData.geo ;
@@ -2093,6 +2126,7 @@ function updateLocalityEntities(addressesIndex, addressesLocality){
 		mylog.log(address, geo, contextData.type, addressesIndex);
 		formInMap.initUpdateLocality(address, geo, contextData.type, addressesIndex); 
 	}
+
 }
 
 function cityKeyPart(unikey, part){
@@ -2182,20 +2216,21 @@ var collection = {
 				console.warn(params.action,collection,what,id);
 				if(data.result){
 					if(data.list == '$unset'){
-						if(location.hash.indexOf("#page") >=0){
+						/*if(location.hash.indexOf("#page") >=0){
 							if(location.hash.indexOf("view.directory.dir.collections") >=0 && contextData.id==userId){ 
                 				loadDataDirectory("collections", "star"); 
               				}else{ 
                 				$(".favorisMenu").removeClass("text-yellow"); 
                 				$(".favorisMenu").children("i").removeClass("fa-star").addClass('fa-star-o'); 
               				} 
-						}else{
-							$(el).children("i").removeClass("fa-star text-red").addClass('fa-star-o');
+						}else{*/
+							$(el).removeClass("text-yellow"); 
+							$(el).children("i").removeClass("fa-star text-yellow").addClass('fa-star-o');
 							delete userConnected.collections[collection][what][id];
-						}
+						//}
 					}
 					else{
-						if(location.hash.indexOf("#page") >=0){
+						/*if(location.hash.indexOf("#page") >=0){
 							if(location.hash.indexOf("view.directory.dir.collections") >=0 && contextData.id==userId){ 
                 				loadDataDirectory("collections", "star"); 
               				}else{ 
@@ -2203,8 +2238,10 @@ var collection = {
                 				$(".favorisMenu").children("i").removeClass("fa-star-o").addClass('fa-star'); 
               				}
               			}
-						else
-							$(el).children("i").removeClass("fa-star-o").addClass('fa-star text-red');
+						else*/
+							$(el).addClass("text-yellow"); 
+							$(el).children("i").removeClass("fa-star-o").addClass('fa-star text-yellow');
+
 						if(!userConnected.collections)
 							userConnected.collections = {};
 						if(!userConnected.collections[collection])
@@ -2251,10 +2288,19 @@ var uploadObj = {
 	isSub : false,
 	update  : false,
 	folder : "communecter", //on force pour pas casser toutes les vielles images
+	contentKey : "profil",
+	path : null,
 	set : function(type,id){
-		uploadObj.type = type;
-		mylog.log("set uploadObj.id", id);
-		uploadObj.id = id;
+		if(typeof type != "undefined"){
+			mylog.log("set uploadObj", id,type,uploadObj.folder,uploadObj.contentKey);
+			uploadObj.type = type;
+			uploadObj.id = id;
+			uploadObj.path = baseUrl+"/"+moduleId+"/document/uploadSave/dir/"+uploadObj.folder+"/folder/"+type+"/ownerId/"+id+"/input/qqfile/contentKey/"+uploadObj.contentKey;
+		} else {
+			uploadObj.type = null;
+			uploadObj.id = null;
+			uploadObj.path = null;
+		}
 	}
 };
 
@@ -2280,11 +2326,8 @@ var dyFObj = {
 		mylog.warn("----------- formatData",formData, collection,ctrl);
 		formData.collection = collection;
 		formData.key = ctrl;
-		mylog.warn("here--- -------- elementLocations",dyFInputs.locationObj);
-		mylog.warn("here--- -------- elementLocations",dyFInputs.locationObj.elementLocations);
 		if(dyFInputs.locationObj.centerLocation){
 			//formData.multiscopes = elementLocation;
-			mylog.warn("here--- -------- centerLocation",dyFInputs.locationObj.centerLocation);
 			formData.address = dyFInputs.locationObj.centerLocation.address;
 			formData.geo = dyFInputs.locationObj.centerLocation.geo;
 			formData.geoPosition = dyFInputs.locationObj.centerLocation.geoPosition;
@@ -2374,6 +2417,7 @@ var dyFObj = {
 		formData = $(formId).serializeFormJSON();
 		mylog.log("before",formData);
 		formData = dyFObj.formatData(formData,collection,ctrl);
+		mylog.log("saveElement", formData);
 		formData.medias = [];
 		$(".resultGetUrl").each(function(){
 			if($(this).html() != ""){
@@ -2447,8 +2491,7 @@ var dyFObj = {
 		                }
 					}
 	            }
-	            uploadObj.type = null;
-	    		uploadObj.id = null;
+	            uploadObj.set()
 	    	}
 	    });
 	},
@@ -2456,16 +2499,15 @@ var dyFObj = {
 		$('#ajax-modal').modal("hide");
 	    //clear the unecessary DOM 
 	    $("#ajaxFormModal").html(''); 
-	   	uploadObj.type = null;
-	    uploadObj.id = null;
+	   	uploadObj.set();
 	    uploadObj.update = false;
 	},
 	editElement : function (type,id){
 		mylog.warn("--------------- editElement ",type,id);
 		//get ajax of the elemetn content
-		uploadObj.type = type;
-		uploadObj.id = id;
+		uploadObj.set(type,id);
 		uploadObj.update = true;
+
 		$.ajax({
 	        type: "GET",
 	        url: baseUrl+"/"+moduleId+"/element/get/type/"+type+"/id/"+id,
@@ -2480,7 +2522,7 @@ var dyFObj = {
 				data.map.id = data.map["_id"]["$id"];
 				delete data.map["_id"];
 				mylog.dir(data);
-				console.log(data);
+				console.log("editElement", data);
 				dyFObj.elementData = data;
 				dyFObj.openForm( dyFInputs.get(type).ctrl ,null, data.map);
 	        } else {
@@ -2497,9 +2539,9 @@ var dyFObj = {
 	    mylog.warn("--------------- Open Form ",type, afterLoad,data);
 	    mylog.dir(data);
 	    uploadObj.contentKey="profil"; 
-      	if(type=="addPhoto") 
-        	uploadObj.contentKey="slider"; 
-	   
+      	/*if(type=="addPhoto") 
+        	uploadObj.contentKey="slider";*/ 
+	    
 	    //initKSpec();
 	    if(userId)
 		{
@@ -2513,7 +2555,7 @@ var dyFObj = {
 				afterLoad : afterLoad,
 				data : data
 			};
-			toastr.error("Vous devez être connecté pour afficher les formulaires de création");
+			toastr.error(tradDynForm["mustbeconnectforcreateform"]);
 			$('#modalLogin').modal("show");
 		}
 	},
@@ -2523,6 +2565,7 @@ var dyFObj = {
 	//if doesn't exist tries to lazyload it from assets/js/dynForm
 	//(object) :: is dynformp definition
 	getDynFormObj : function(type, callback,afterLoad, data ){
+		//alert(type+'.js');
 		mylog.warn("------------ getDynFormObj",type, callback,afterLoad, data );
 		if(typeof type == "object"){
 			mylog.log(" object directly Loaded : ", type);
@@ -2541,6 +2584,7 @@ var dyFObj = {
 			lazyLoad( dfPath+type+'.js', 
 				null,
 				function() { 
+					//alert(dfPath+type+'.js');
 					mylog.log("lazyLoaded",moduleUrl+'/js/dynForm/'+dyFInputs.get(type).ctrl+'.js');
 					mylog.dir(dynForm);
 					//typeObj[type].dynForm = dynForm;
@@ -2553,16 +2597,13 @@ var dyFObj = {
 	},
 	//prepare information for the modal panel 
 	//and launches the build process
-	starBuild : function  (afterLoad, data) {
+	starBuild : function  (afterLoad, data) { 
 		mylog.warn("------------ starBuild",dyFObj.elementObj, afterLoad, data);
 		mylog.dir(dyFObj.elementObj);
 		$("#ajax-modal .modal-header").removeClass("bgEvent bgOrga bgProject bgPerson bgDDA");//.addClass(dyFObj.elementObj.bgClass);
 		$("#ajax-modal-modal-title").html("<i class='fa fa-refresh fa-spin'></i> Chargement en cours. Merci de patienter.");
 		$("#ajax-modal-modal-title").removeClass("text-dark text-green text-azure text-purple text-orange text-blue text-turq");
-
-		$("#ajax-modal .modal-header").removeClass("bg-purple bg-azure bg-green bg-orange bg-yellow bg-blue bg-turq")
-									  .addClass(dyFObj.elementObj.titleClass);
-
+		
 	  	$("#ajax-modal-modal-body").html( "<div class='row bg-white'>"+
 	  										"<div class='col-sm-10 col-sm-offset-1'>"+
 							              	"<div class='space20'></div>"+
@@ -2572,10 +2613,14 @@ var dyFObj = {
 							              "</div>");
 	  	$('.modal-footer').hide();
 	  	$('#ajax-modal').modal("show");
+
 	  	dyFInputs.init();
 	  	afterLoad = ( notNull(afterLoad) ) ? afterLoad : null;
 	  	data = ( notNull(data) ) ? data : {}; 
 	  	dyFObj.buildDynForm(afterLoad, data);
+
+	  	$("#ajax-modal .modal-header").removeClass("bg-dark bg-purple bg-red bg-azure bg-green bg-green-poi bg-orange bg-yellow bg-blue bg-turq bg-url")
+									  .addClass(dyFObj.elementObj.titleClass);
 	},
 	buildDynForm : function (afterLoad,data) { 
 		mylog.warn("--------------- buildDynForm", dyFObj.elementObj, afterLoad,data);
@@ -2614,6 +2659,8 @@ var dyFObj = {
 			        mylog.log("onSave", dyFObj.elementObj.saveUrl);
 			        if( dyFObj.elementObj.save )
 			        	dyFObj.elementObj.save("#ajaxFormModal");
+			        if( dyFObj.elementObj.dynForm.jsonSchema.save )
+			        	dyFObj.elementObj.dynForm.jsonSchema.save();
 			        else if(dyFObj.elementObj.saveUrl)
 			        	dyFObj.saveElement("#ajaxFormModal",dyFObj.elementObj.col,dyFObj.elementObj.ctrl,dyFObj.elementObj.saveUrl,afterSave);
 			        else
@@ -2636,8 +2683,8 @@ var dyFObj = {
 		{
 			getAjax( null , baseUrl+"/api/tool/get/what/mongoId" , function(data){
 				mylog.log("setMongoId uploadObj.id", data.id);
-				uploadObj.id = data.id;
-				$("#ajaxFormModal #id").val(data.id)
+				uploadObj.set(type,data.id);
+				$("#ajaxFormModal #id").val(data.id);
 				if( typeof callback === "function" )
                 	callback();
 			});
@@ -2670,11 +2717,24 @@ var dyFObj = {
 		mylog.dir(form);
 
 		dyFObj.openForm(form, fct, data);
+	},
+	canUserEdit : function ( ) {
+		var res = false;
+		if( userId && userConnected && userConnected.links && contextData ){
+			if(contextData.type == "organizations" && userConnected.links.memberOf[contextData.id].isAdmin )
+				res = true;
+			if(contextData.type == "events" && userConnected.links.events[contextData.id].isAdmin )
+				res = true;
+			if(contextData.type == "projects" && userConnected.links.projects[contextData.id].isAdmin )
+				res = true;
+		}
+		return res;
 	}
 }
 //TODO : refactor into dyfObj.inputs
 var dyFInputs = {
-	init : function(){
+
+	init : function() {
 		 //global variables clean up
 		dyFInputs.locationObj.elementLocation = null;
 	    dyFInputs.locationObj.elementLocations = [];
@@ -2684,22 +2744,23 @@ var dyFInputs = {
 	    updateLocality = false;
 
 	    // Initialize tags list for network in form of element
-		if(typeof networkJson != 'undefined' && typeof networkJson.add != "undefined"){
+		if(typeof networkJson != 'undefined' && typeof networkJson.add != "undefined"  && typeof typeObj != "undefined" ){
 			$.each(networkJson.add, function(key, v) {
 				if(typeof networkJson.request.sourceKey != "undefined"){
 					sourceObject = {inputType:"hidden", value : networkJson.request.sourceKey[0]};
 					typeObj[key].dynForm.jsonSchema.properties.source = sourceObject;
 				}
+
 				if(v){
-					mylog.log("tags", typeof typeObj[key].dynForm.jsonSchema.properties.tags, typeObj[key].dynForm.jsonSchema.properties.tags);
-					mylog.log("networkTags", networkTags);
-					if(typeof typeObj[key].dynForm.jsonSchema.properties.tags != "undefined"){
-						typeObj[key].dynForm.jsonSchema.properties.tags.values=networkTags;
-						if(typeof networkJson.request.mainTag != "undefined")
-							typeObj[key].dynForm.jsonSchema.properties.tags.mainTag = networkJson.request.mainTag[0];
-					}
-					mylog.log("networkJson.dynForm");
 					if(notNull(networkJson.dynForm)){
+						mylog.log("tags", typeof typeObj[key].dynForm.jsonSchema.properties.tags, typeObj[key].dynForm.jsonSchema.properties.tags);
+						mylog.log("networkTags", networkTags);
+						if(typeof typeObj[key].dynForm.jsonSchema.properties.tags != "undefined"){
+							typeObj[key].dynForm.jsonSchema.properties.tags.values=networkTags;
+							if(typeof networkJson.request.mainTag != "undefined")
+								typeObj[key].dynForm.jsonSchema.properties.tags.mainTag = networkJson.request.mainTag[0];
+						}
+						mylog.log("networkJson.dynForm");
 						mylog.log("networkJson.dynForm", "networkJson.dynForm");
 						if(notNull(networkJson.dynForm.extra)){
 							var nbListTags = 1 ;
@@ -2710,7 +2771,8 @@ var dyFInputs = {
 									"inputType" : "tags",
 									"placeholder" : networkJson.dynForm.extra["tags"+nbListTags].placeholder,
 									"values" : networkTagsCategory[ networkJson.dynForm.extra["tags"+nbListTags].list ],
-									"data" : networkTagsCategory[ networkJson.dynForm.extra["tags"+nbListTags].list ]
+									"data" : networkTagsCategory[ networkJson.dynForm.extra["tags"+nbListTags].list ],
+									"label" : networkJson.dynForm.extra["tags"+nbListTags].list
 								};
 								nbListTags++;
 								mylog.log("networkJson.dynForm.extra.tags", "networkJson.dynForm.extra.tags"+nbListTags);
@@ -2724,6 +2786,7 @@ var dyFInputs = {
 		}
 		
 	},
+
 	inputText :function(label, placeholder, rules, custom) { 
 		var inputObj = {
 			label : label,
@@ -2742,9 +2805,9 @@ var dyFInputs = {
 	        rules : ( notEmpty(rules) ? rules : { required : true } )
 	    };
 	    if(type){
-	    	inputObj.label = "Nom de votre " + trad[dyFInputs.get(type).ctrl]+" ";
+	    	inputObj.label = tradDynForm["nameofyour"]+" " + trad[dyFInputs.get(type).ctrl]+" ";
 	    	if(type=="classified") 
-	    		inputObj.label = "Titre de votre " + trad[type]+" ";
+	    		inputObj.label = tradDynForm["titleofyour"]+" "+ trad[type]+" ";
 
 	    	inputObj.placeholder = inputObj.label + " ...";
 
@@ -2798,13 +2861,48 @@ var dyFInputs = {
 		};
 		return inputObj;
 	},
+	inputSelectGroup :function(label, placeholder, list, group, rules, init) { 
+		var inputObj = {
+			inputType : "select",
+			label : ( notEmpty(label) ? label : "" ),
+			placeholder : ( notEmpty(placeholder) ? placeholder : "Choisir" ),
+			options : ( notEmpty(list) ? list : [] ),
+			groupOptions : ( notEmpty(group) ? group : [] ),
+			rules : ( notEmpty(rules) ? rules : {} ),
+			init : ( notEmpty(init) ? init : function(){} )
+		};
+		return inputObj;
+	},
+	organizerId : function( organizerId, organizerType ){
+		return dyFInputs.inputSelectGroup( 	tradDynForm["whoorganizedevent"]+" ?", 
+											tradDynForm["whoorganize"]+" ?", 
+											firstOptions(), 
+											parentList( ["organizations","projects"], organizerId, organizerType ), 
+											{ required : true },
+											function(){
+												$("#ajaxFormModal #organizerId").off().on("change",function(){
+													
+													var organizerId = $(this).val();
+													var organizerType = "notfound";
+													if(organizerId == "dontKnow" )
+														organizerType = "dontKnow";
+													else if( $('#organizerId').find(':selected').data('type') && typeObj[$('#organizerId').find(':selected').data('type')] )
+														organizerType = $('#organizerId').find(':selected').data('type');
+													else
+														organizerType = typeObj["person"].col;
+
+													mylog.warn( "organizer",organizerId,organizerType, $('#organizerId').find(':selected').data('type') );
+													$("#ajaxFormModal #organizerType").val( organizerType );
+												});
+											});
+	},
 	tags : function(list) { 
     	tagsL = (list) ? list : tagsList;
     	return {
 			inputType : "tags",
-			placeholder : "Mots clés",
+			placeholder : tradDynForm["tags"],
 			values : tagsL,
-			label : "Ajouter quelques mots clés"
+			label : tradDynForm["addtags"]
 		}
 	},
     imageAddPhoto : {
@@ -2813,16 +2911,19 @@ var dyFInputs = {
     	init : function() { 
     		setTimeout( function()
     		{
-        		$('#trigger-upload').click(function() {
-		        	$('.fine-uploader-manual-trigger').fineUploader('uploadStoredFiles');
+    			
+        		$('#trigger-upload').click(function(e) {
+        			alert("initImageTrigger");
+        			$('.fine-uploader-manual-trigger').fineUploader('uploadStoredFiles');
 		        	urlCtrl.loadByHash(location.hash);
         			$('#ajax-modal').modal("hide");
 		        });
 				$("#ajax-modal .modal-header").removeClass("bg-dark bg-purple bg-red bg-azure bg-green bg-green-poi bg-orange bg-yellow bg-blue bg-turq bg-url")
-						  					  .addClass("bg-dark");
+					  					  	  .addClass("bg-dark");
     		 	
     		 	$("#ajax-modal-modal-title").html("<i class='fa fa-camera'></i> Publier une photo");
-        	},500);
+
+        	},1500);
     	}
     },
     image :function() { 
@@ -2833,11 +2934,13 @@ var dyFInputs = {
 
     	return {
 	    	inputType : "uploader",
-	    	label : "Images de profil et album", 
+	    	label : tradDynForm["imageshere"]+" :", 
+	    	showUploadBtn : false,
 	    	afterUploadComplete : function(){
+	    		//alert("afterUploadComplete :: "+uploadObj.gotoUrl);
 		    	dyFObj.closeForm();
 				//alert( "image upload then goto : "+uploadObj.gotoUrl );
-	            urlCtrl.loadByHash( uploadObj.gotoUrl );
+	            urlCtrl.loadByHash( (uploadObj.gotoUrl) ? uploadObj.gotoUrl : location.hash );
 		    }
     	}
     },
@@ -2858,7 +2961,7 @@ var dyFInputs = {
 					});
 	    		}
 	        }
-	    } ;
+	    };
 	    return inputObj;
 	},
 
@@ -2875,16 +2978,17 @@ var dyFInputs = {
 	    return res;
 	},
     price :function(label, placeholder, rules, custom) { 
-		var inputObj = dyFInputs.inputText("Prix", "Prix ...") ;
+		var inputObj = dyFInputs.inputText(tradDynForm["pricesymbole"], tradDynForm["pricesymbole"]+" ...") ;
 	    inputObj.init = function(){
     		$('input#price').filter_input({regex:'[0-9]'});
       	};
     	return inputObj;
     },
+
     email :function (label,placeholder,rules) {  
     	var inputObj = {
     		inputType : "text",
-	    	label : ( notEmpty(label) ? label : "E-mail principal" ),
+	    	label : ( notEmpty(label) ? label : tradDynForm["mainemail"] ),
 	    	placeholder : ( notEmpty(placeholder) ? placeholder : "exemple@mail.com" ),
 	    	rules : ( notEmpty(rules) ? rules : { email: true } )
 	    }
@@ -2899,7 +3003,7 @@ var dyFInputs = {
 	    return inputObj;
 	},
 	location : {
-		label :"Localisation",
+		label : tradDynForm["localization"],
        inputType : "location"
     },
     locationObj : {
@@ -3133,7 +3237,7 @@ var dyFInputs = {
 		}
     },
     inputUrl :function (label,placeholder,rules, custom) {  
-    	label = ( notEmpty(label) ? label : "URL principale" );
+    	label = ( notEmpty(label) ? label : tradDynForm["mainurl"] );
     	placeholder = ( notEmpty(placeholder) ? placeholder : "http://www.exemple.org" );
     	rules = ( notEmpty(rules) ? rules : { url: true } );
     	custom = ( notEmpty(custom) ? custom : "<div class='resultGetUrl resultGetUrl0 col-sm-12'></div>" );
@@ -3149,8 +3253,8 @@ var dyFInputs = {
 	    return inputObj;
 	},
     urls : {
-    	label : "Informations libres / urls",
-    	placeholder : "informations / urls ...",
+    	label : tradDynForm["freeinfourl"],
+    	placeholder : tradDynForm["freeinfourl"]+" ...",
         inputType : "array",
         value : [],
         init:function(){
@@ -3159,7 +3263,7 @@ var dyFInputs = {
     },
     urlsOptionnel : {
         inputType : "array",
-        placeholder : "url, informations supplémentaires, actions à faire, etc",
+        placeholder : tradDynForm["urlandaddinfoandaction"],
         value : [],
         init:function(){
             getMediaFromUrlContent(".addmultifield0", ".resultGetUrl0",0);
@@ -3177,9 +3281,9 @@ var dyFInputs = {
 	        	})
 	        },
 	    	"switch" : {
-	    		"onText" : "Oui",
-	    		"offText" : "Non",
-	    		"labelText":"Toute la journée",
+	    		"onText" : tradDynForm["yes"],
+	    		"offText" : tradDynForm["no"],
+	    		"labelText":tradDynForm["allday"],
 	    		"onChange" : function(){
 	    			var allDay = $("#ajaxFormModal #allDay").is(':checked');
 	    			var startDate = "";
@@ -3219,63 +3323,15 @@ var dyFInputs = {
     	};
     	return inputObj;
     },
-   /* allDay : {
-    	inputType : "checkbox",
-    	checked : true,
-    	init : function(){
-        	$("#ajaxFormModal #allDay").off().on("switchChange.bootstrapSwitch",function (e, data) {
-        		mylog.log("toto",$("#ajaxFormModal #allDay").val());
-        	})
-        },
-    	"switch" : {
-    		"onText" : "Oui",
-    		"offText" : "Non",
-    		"labelText":"Toute la journée",
-    		"onChange" : function(){
-    			var allDay = $("#ajaxFormModal #allDay").is(':checked');
-    			var startDate = "";
-    			var endDate = "";
-    			$("#ajaxFormModal #allDay").val($("#ajaxFormModal #allDay").is(':checked'));
-    			if (allDay) {
-    				$(".dateTimeInput").addClass("dateInput");
-    				$(".dateTimeInput").removeClass("dateTimeInput");
-    				$('.dateInput').datetimepicker('destroy');
-    				$(".dateInput").datetimepicker({ 
-				        autoclose: true,
-				        lang: "fr",
-				        format: "d/m/Y",
-				        timepicker:false
-				    });
-				    startDate = moment($('#ajaxFormModal #startDate').val(), "DD/MM/YYYY HH:mm").format("DD/MM/YYYY");
-				    endDate = moment($('#ajaxFormModal #endDate').val(), "DD/MM/YYYY HH:mm").format("DD/MM/YYYY");
-    			} else {
-    				$(".dateInput").addClass("dateTimeInput");
-    				$(".dateInput").removeClass("dateInput");
-    				$('.dateTimeInput').datetimepicker('destroy');
-    				$(".dateTimeInput").datetimepicker({ 
-	       				weekStart: 1,
-						step: 15,
-						lang: 'fr',
-						format: 'd/m/Y H:i'
-				    });
-				    
-    				startDate = moment($('#ajaxFormModal #startDate').val(), "DD/MM/YYYY").format("DD/MM/YYYY HH:mm");
-					endDate = moment($('#ajaxFormModal #endDate').val(), "DD/MM/YYYY").format("DD/MM/YYYY HH:mm");
-    			}
-			    if (startDate != "Invalid date") $('#ajaxFormModal #startDate').val(startDate);
-				if (endDate != "Invalid date") $('#ajaxFormModal #endDate').val(endDate);
-    		}
-    	}
-    },*/
     startDateInput : function(typeDate){
     	mylog.log('startDateInput', typeDate);
     	var inputObj = {
 	        inputType : ( notEmpty(typeDate) ? typeDate : "datetime" ),
-	        placeholder: "Date de début",
-	        label : "Date de début",
+	        placeholder: tradDynForm["startDate"],
+	        label : tradDynForm["startDate"],
 	        rules : { 
 	        	required : true,
-	        	duringDates: ["#startDateParent","#endDateParent","La date de début"]
+	        	duringDates: ["#startDateParent","#endDateParent",tradDynForm["thestartDate"]]
 	    	}
 	    }
     	return inputObj;
@@ -3283,20 +3339,20 @@ var dyFInputs = {
     endDateInput : function(typeDate){
     	var inputObj = {
 	        inputType : ( notEmpty(typeDate) ? typeDate : "datetime" ),
-	        placeholder: "Date de fin",
-	        label : "Date de fin",
+	        placeholder: tradDynForm["endDate"],
+	        label : tradDynForm["endDate"],
 	        rules : { 
 	        	required : true,
-	        	greaterThan: ["#ajaxFormModal #startDate","la date de début"],
-	        	duringDates: ["#startDateParent","#endDateParent","La date de fin"]
+	        	greaterThan: ["#ajaxFormModal #startDate",tradDynForm["thestartDate"]],
+	        	duringDates: ["#startDateParent","#endDateParent",tradDynForm["theendDate"]]
 		    }
 	    }
     	return inputObj;
     },
     birthDate : {
         inputType : "date",
-        label : "Date d'anniversaire",
-        placeholder: "Date d'anniversaire"
+        label : tradDynForm["birthdate"],
+        placeholder: tradDynForm["birthdate"]
     },
     dateEnd :{
     	inputType : "date",
@@ -3419,18 +3475,7 @@ var typeObj = {
 			    }
 			}
 		}	},
-	"addPhoto":{ 
-		dynForm : {
-		    jsonSchema : {
-			    title : "Uploader une image ?",
-			    icon : "question-cirecle-o",
-			    noSubmitBtns : true,
-			    properties : {
-			    	image : dyFInputs.imageAddPhoto
-			    }
-			}
-		}},
-	
+	"addPhoto":{ titleClass : "bg-dark" },
 	"person" : { col : "citoyens" ,ctrl : "person",titleClass : "bg-yellow",bgClass : "bgPerson",color:"yellow",icon:"user",lbh : "#person.invite",	},
 	"persons" : { sameAs:"person" },
 	"people" : { sameAs:"person" },
@@ -3464,13 +3509,20 @@ var typeObj = {
 	"entry" : {	col:"surveys",	ctrl:"survey",	titleClass : "bg-lightblue",bgClass : "bgDDA",	icon : "gavel",	color : "azure", saveUrl : baseUrl+"/" + moduleId + "/survey/saveSession"},
 	"vote" : {col:"actionRooms",ctrl:"survey"},
 	"survey" : {col:"actionRooms",ctrl:"survey",color:"lightblue2",icon:"cog"},
+	"surveys" : {sameAs:"survey"},
 	"action" : {col:"actions",ctrl:"room",titleClass : "bg-lightblue",bgClass : "bgDDA",icon : "cogs",color : "lightblue2", saveUrl : baseUrl+"/" + moduleId + "/rooms/saveaction"},
 	"actions" : {col:"actions",color:"azure",ctrl:"room",icon:"cog"},
+	"actionRooms" : {sameAs:"actions"},
 	"rooms" : {col:"actions",ctrl:"room",color:"azure",icon:"gavel"},
 	"discuss" : {col:"actionRooms",ctrl:"room"},
 	"contactPoint" : {col : "contact" , ctrl : "person",titleClass : "bg-blue",bgClass : "bgPerson",color:"blue",icon:"user", saveUrl : baseUrl+"/" + moduleId + "/element/saveContact"},
 	"classified":{ col:"classified",ctrl:"classified", titleClass : "bg-azure", color:"azure",	icon:"bullhorn",
-				   subTypes : ["Technologie","Immobilier","Véhicules","Maison","Loisirs","Mode"]	},
+				   subTypes : [
+				   //FR
+				   "Technologie","Immobilier","Véhicules","Maison","Loisirs","Mode",
+				   //EN
+				   "Technology","Property","Vehicles","Home","Leisure","Fashion"
+				   ]	},
 	"url" : {col : "url" , ctrl : "url",titleClass : "bg-blue",bgClass : "bgPerson",color:"blue",icon:"user",saveUrl : baseUrl+"/" + moduleId + "/element/saveurl",	},
 	"default" : {icon:"arrow-circle-right",color:"dark"},
 	//"video" : {icon:"video-camera",color:"dark"},
@@ -3770,8 +3822,7 @@ var js_templates = {
 //*********************************************************************************
 var album = {
 	show : function (id,type){
-		uploadObj.type = type;
-		uploadObj.id = id;
+		uploadObj.set(type,id);
 		getAjax( null , baseUrl+'/'+moduleId+"/document/list/id/"+id+"/type/"+type+"/tpl/json" , function( data ) { 
 			
 			console.dir(data);
@@ -3785,8 +3836,7 @@ var album = {
 				},
 			    function(){
 			    	$(".addPhotoBtn").click(function() { 
-			    		uploadObj.type = type;
-			    		uploadObj.id = id;
+			    		uploadObj.set(type,id);
 						dyFObj.openForm("addPhoto");
 			    	});
 			    	album.delete();
@@ -3834,7 +3884,7 @@ function KScrollTo(target){
 	mylog.log("KScrollTo target", target);
 	if($(target).length>=1){
 		$('html, body').stop().animate({
-	        scrollTop: $(target).offset().top - 70
+	        scrollTop: $(target).offset().top - 60
 	    }, 500, '');
 	}
 }
@@ -3950,8 +4000,13 @@ function initKInterface(params){ console.log("initKInterface");
 			formInMap.cancel();
     	//else if(isMapEnd == false && notEmpty(contextData) && location.hash.indexOf("#page.type."+contextData.type+"."+contextData.id))
 		//	getContextDataLinks();
-		else
-			showMap();
+		else{
+
+			if(isMapEnd == false && contextData && contextData.map && location.hash.indexOf("#page.type."+contextData.type+"."+contextData.id) )
+				Sig.showMapElements(Sig.map, contextData.map.data, contextData.map.icon, contextData.map.title);
+			
+				showMap();
+		}
     });
 
     bindLBHLinks();
@@ -3981,6 +4036,11 @@ function getContextDataLinks(){
 		success: function(data){
 			mylog.log("getContextDataLinks data", data);
 			Sig.restartMap();
+			contextData.map = {
+				data : data,
+				icon : "link",
+				title : "La communauté de <b>"+contextData.name+"</b>"
+			} ;
 			Sig.showMapElements(Sig.map, data, "link", "La communauté de <b>"+contextData.name+"</b>");
 			//showMap();
 		},

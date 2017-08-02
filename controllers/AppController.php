@@ -89,8 +89,6 @@ class AppController extends CommunecterController {
 
     	echo $this->renderPartial("referencement", $params, true);
     }
-
-
 	
 	public function actionMedia(){ //kgougle
 		$indexMin = isset($_POST['indexMin']) ? $_POST['indexMin'] : 0;
@@ -137,6 +135,7 @@ class AppController extends CommunecterController {
         $params = array("type" => @$type );
         echo $this->renderPartial("search", $params, true);
     }
+    
     public function actionSocial($type=null){
         CO2Stat::incNbLoad("co2-search");   
         $params = array("type" => @$type );
@@ -218,7 +217,8 @@ class AppController extends CommunecterController {
 
         if(@$element["parentId"] && @$element["parentType"])
             $element['parent'] = Element::getByTypeAndId( $element["parentType"], $element["parentId"]);
-        if(@$element["organizerId"] && @$element["organizerType"])
+        if(@$element["organizerId"] && @$element["organizerType"] && 
+            $element["organizerId"] != "dontKnow" && $element["organizerType"] != "dontKnow")
             $element['organizer'] = Element::getByTypeAndId( $element["organizerType"], $element["organizerId"]);
 
         $params = array("id" => @$id,
